@@ -28,7 +28,9 @@ private fun JsonWriter.writeSensor(
     sensorName: String,
     sensorUniqueId: String,
     sensorIcon: String,
-    sensorTopic: String
+    sensorTopic: String,
+    sensorTemplate: String,
+    attributesTemplate: String
 ) {
     beginObject()
 
@@ -40,6 +42,12 @@ private fun JsonWriter.writeSensor(
     value(sensorIcon)
     name("state_topic")
     value(sensorTopic)
+    name("value_template")
+    value(sensorTemplate)
+    name("json_attributes_template")
+    value(attributesTemplate)
+    name("json_attributes_topic")
+    value(sensorTopic)
     name("device")
     writeDeviceInfo(deviceId)
 
@@ -48,14 +56,29 @@ private fun JsonWriter.writeSensor(
 
 fun createSensorDiscoveryConfiguration(deviceId: Int, sensor: Sensor, sensorTopic: String): String {
     val writer = StringWriter()
-    JsonWriter(writer).use {
-        it.writeSensor(
-            deviceId = deviceId,
-            sensorName = sensor.name,
-            sensorUniqueId = sensor.getUniqueId(deviceId),
-            sensorIcon = sensor.icon,
-            sensorTopic = sensorTopic
-        )
-    }
+
+      JsonWriter(writer).use {
+          if(sensor.name == "Media Title") {
+              it.writeSensor(
+                  deviceId = deviceId,
+                  sensorName = sensor.name,
+                  sensorUniqueId = sensor.getUniqueId(deviceId),
+                  sensorIcon = sensor.icon,
+                  sensorTopic = sensorTopic,
+                  sensorTemplate = "{{value_json.title}}",
+                  attributesTemplate = "{{value_json|to_json}}"
+              )
+          }else {
+              it.writeSensor(
+                  deviceId = deviceId,
+                  sensorName = sensor.name,
+                  sensorUniqueId = sensor.getUniqueId(deviceId),
+                  sensorIcon = sensor.icon,
+                  sensorTopic = sensorTopic,
+                  sensorTemplate = "{{value}}",
+                  attributesTemplate = "{{value_json|to_json}}"
+              )
+          }
+      }
     return writer.toString()
 }

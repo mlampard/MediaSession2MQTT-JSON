@@ -28,16 +28,43 @@ fun MediaMetadata?.toMediaTitle(): String {
     if (this == null) {
         return ""
     }
-    // Use the display title as-is if available
-    val displayTitle = getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
-    if (!displayTitle.isNullOrEmpty()) {
-        return displayTitle
+    // return a formatted json string of all available MediaMetadata strings for current mediaPlayer
+    // chop known prefixes, leaving app-specific ones. Which strings are output is dependent
+    // on the app. In HomeAssistant these will be attributes of the media_title sensor like so:
+    // A music player:
+    // artist: Some Artist
+    // duration: ""
+    // user_rating: ""
+    // art: ""
+    // album_art_uri: https://some-url.com/foo.jpg
+    // com.fooplayer.metadata.track_id: fooin://some_track_id/
+    // media_id: some_track_id
+    // album: Some Greatest Hits from Some Artist
+    // title: Just in my head
+    // album_artist: Some Artist and their friends
+    //
+    // A video app output media_title might have attributes something like:
+    // artist: A sock wearer
+    // duration: ""
+    // art: ""
+    // album: ""
+    // title: My shoes are too big
+    //
+    //or a TV app might provide:
+    // title: Bon Voyage Mr Smart-e-Pants S1 Ep1 - Twenty Days on a Desert Island
+    // subtitle: 23 - No Drama Channel, 8:32 pm - 9:32 pm
+    // description: >-
+    //   Fred finds himself stranded on a desert island with a can of beer and a banana.
+    // icon_uri: https://sometv.someplace.com/program/544786.jpg
+
+    return keySet().joinToString(prefix = "{", postfix = "}") {
+        key -> "\"${
+                key.lowercase()
+                .removePrefix("android.media.metadata.display_")
+                .removePrefix("android.media.metadata.")
+                //.removePrefix("com.audible.application.mediacommon.")
+        }\":\"${
+            getString(key)?:"" // change null to empty
+        }\""
     }
-    val title = getString(MediaMetadata.METADATA_KEY_TITLE)
-    if (title.isNullOrEmpty()) {
-        return ""
-    }
-    // If we have a title, check if we also have an artist
-    val artist = getString(MediaMetadata.METADATA_KEY_ARTIST)
-    return if (artist.isNullOrEmpty()) title else "$artist - $title"
 }
