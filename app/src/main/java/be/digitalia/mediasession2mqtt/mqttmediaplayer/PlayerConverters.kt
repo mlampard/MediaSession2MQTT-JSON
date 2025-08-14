@@ -64,7 +64,11 @@ fun MediaMetadata?.toMediaTitle(): String {
                 .removePrefix("android.media.metadata.")
                 //.removePrefix("com.audible.application.mediacommon.")
         }\":\"${
-            getString(key)?:"" // change null to empty
+                getString(key)?: 
+                getRating(key)?: 
+                getText(key)?:
+                getBitmap(key)?:
+                getLong(key)?:"" // change null to empty
         }\""
     }
 }
