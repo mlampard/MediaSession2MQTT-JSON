@@ -86,6 +86,7 @@ fun MediaMetadata?.toMediaTitle(): String {
     // icon_uri: https://sometv.someplace.com/program/544786.jpg
 
     var desc: String?  = getDescription().toString()
+    desc = desc?.replace(", null","")
 
     val MAXLEN = 80
     desc?.length?.let {
