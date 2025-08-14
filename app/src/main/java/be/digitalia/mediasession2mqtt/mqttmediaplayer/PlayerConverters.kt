@@ -2,6 +2,9 @@ package be.digitalia.mediasession2mqtt.mqttmediaplayer
 
 import android.media.MediaMetadata
 import android.media.session.PlaybackState
+//import android.util.Base64
+//import android.graphics.Bitmap
+//import java.io.ByteArrayOutputStream
 
 /**
  * Convert the MediaSession state to a simplified MQTT state.
@@ -29,6 +32,23 @@ fun getNullableLong(value: Long): String? {
     }
 }
 
+/*
+fun imageToBase64(bitmap: Bitmap?): String? {
+    return (if (bitmap==null ) {
+        null
+    }else {
+        try {
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 70, stream)
+            val byteArray = stream.toByteArray()
+            Base64.encodeToString(byteArray, Base64.DEFAULT)
+        }finally {
+            null
+        }
+    }) as String?
+}
+*/
+
 /**
  * Extract the current media title, or return an empty String if none is available.
  */
@@ -41,8 +61,8 @@ fun MediaMetadata?.toMediaTitle(): String {
     // on the app. In HomeAssistant these will be attributes of the media_title sensor like so:
     // A music player:
     // artist: Some Artist
-    // duration: ""
-    // user_rating: ""
+    // duration: "220810"
+    // user_rating: "Rating:style=2 rating=unrated"
     // art: ""
     // album_art_uri: https://some-url.com/foo.jpg
     // com.fooplayer.metadata.track_id: fooin://some_track_id/
@@ -53,7 +73,7 @@ fun MediaMetadata?.toMediaTitle(): String {
     //
     // A video app output media_title might have attributes something like:
     // artist: A sock wearer
-    // duration: ""
+    // duration: "4548484"
     // art: ""
     // album: ""
     // title: My shoes are too big
@@ -65,17 +85,26 @@ fun MediaMetadata?.toMediaTitle(): String {
     //   Fred finds himself stranded on a desert island with a can of beer and a banana.
     // icon_uri: https://sometv.someplace.com/program/544786.jpg
 
-    return keySet().joinToString(prefix = "{", postfix = "}") {
+    var desc: String?  = getDescription().toString()
+
+    val MAXLEN = 80
+    desc?.length?.let {
+        if (it > MAXLEN) {
+            desc = desc.take(MAXLEN - 3) + "..."
+        }
+    }
+
+    return keySet().toSortedSet().joinToString(prefix = "{\"meta_description\":\"${desc}\",", postfix = "}") {
         key -> "\"${
                 key.lowercase()
-                .removePrefix("android.media.metadata.display_")
-                .removePrefix("android.media.metadata.")
-                //.removePrefix("com.audible.application.mediacommon.")
-        }\":\"${
+                    .substringAfterLast('.')
+                    .removePrefix("display_")
+                    .removePrefix("metadata_key_")
+            }\":\"${
                 getString(key)?: 
                 getRating(key)?: 
                 getText(key)?:
-                getBitmap(key)?: 
+                //imageToBase64(bitmap=getBitmap(key))?: // hide bitmap objects for now
                 getNullableLong(getLong(key))?:"" // change null to empty
         }\""
     }
