@@ -21,6 +21,14 @@ fun PlaybackState?.toMQTTPlaybackStateOrNull(): MQTTPlaybackState? {
     }
 }
 
+fun getNullableLong(value: Long): String? {
+    return if (value == 0L) {
+        null
+    }else{
+        value.toString()
+    }
+}
+
 /**
  * Extract the current media title, or return an empty String if none is available.
  */
@@ -67,8 +75,8 @@ fun MediaMetadata?.toMediaTitle(): String {
                 getString(key)?: 
                 getRating(key)?: 
                 getText(key)?:
-                getBitmap(key)?:
-                getLong(key)?:"" // change null to empty
+                getBitmap(key)?: 
+                getNullableLong(getLong(key))?:"" // change null to empty
         }\""
     }
 }
