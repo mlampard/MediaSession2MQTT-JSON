@@ -1,6 +1,7 @@
 package be.digitalia.mediasession2mqtt.mqttmediaplayer
 
 import android.media.MediaMetadata
+import android.media.Rating
 import android.media.session.PlaybackState
 //import android.util.Base64
 //import android.graphics.Bitmap
@@ -49,6 +50,35 @@ fun imageToBase64(bitmap: Bitmap?): String? {
 }
 */
 
+fun decodeRating(rating: Rating?): String? {
+    return (if (rating == null){
+        null
+    }else{
+        if (rating.isRated) {
+            if (rating.ratingStyle == Rating.RATING_NONE) {
+                return "not_rated"
+            }
+            if (   rating.ratingStyle == Rating.RATING_5_STARS
+                || rating.ratingStyle == Rating.RATING_4_STARS
+                || rating.ratingStyle == Rating.RATING_3_STARS) {
+                   return "${rating.starRating} / ${rating.ratingStyle}"
+            }
+            if (rating.ratingStyle == Rating.RATING_HEART) {
+                if(rating.hasHeart()){return "liked"} else {return "unliked"}
+            }
+            if (rating.ratingStyle == Rating.RATING_THUMB_UP_DOWN) {
+                if(rating.isThumbUp()){return "thumb-up"} else {return "thumb-down"}
+            }
+            if(rating.ratingStyle == Rating.RATING_PERCENTAGE) {
+                return "${rating.percentRating}%"
+            } else {
+                return "unknown"
+            }
+        }else {
+            return "unrated"
+        }
+    })
+}
 /**
  * Extract the current media title, or return an empty String if none is available.
  */
@@ -103,7 +133,7 @@ fun MediaMetadata?.toMediaTitle(): String {
                     .removePrefix("metadata_key_")
             }\":\"${
                 getString(key)?: 
-                getRating(key)?: 
+                decodeRating(getRating(key))?: 
                 getText(key)?:
                 //imageToBase64(bitmap=getBitmap(key))?: // hide bitmap objects for now
                 getNullableLong(getLong(key))?:"" // change null to empty
