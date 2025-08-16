@@ -136,11 +136,11 @@ fun MediaMetadata?.toMediaTitle(): String {
     if (!desc.isNullOrEmpty()) {
         if (desc.isNotEmpty() && desc.isNotBlank()) {
             desc = desc.replace(", null", "")
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
+            desc = safeString(desc)
 
             val MAXLEN = 80
-            desc.length.let {
+            if (desc != null)
+                desc.length.let {
                 if (it > MAXLEN) desc = desc.take(MAXLEN - 3) + "..."
             }
             desc = (if (desc == "null") "" else "\"meta_description\":\"${desc}\",")
@@ -168,9 +168,16 @@ fun MediaMetadata?.toMediaTitle(): String {
     }
 }
 
+// escape sequences for safe JSON.. hopefully
 fun safeString(value: String?): String? {
     if (value == null)
         return null
     else
-        return value.replace("\\", "\\\\").replace("\"", "\\\"")
+        return value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\b", "\\b")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
 }
