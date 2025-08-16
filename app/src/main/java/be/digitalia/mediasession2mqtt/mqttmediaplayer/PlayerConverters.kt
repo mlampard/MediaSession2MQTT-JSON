@@ -3,6 +3,8 @@ package be.digitalia.mediasession2mqtt.mqttmediaplayer
 import android.media.MediaMetadata
 import android.media.Rating
 import android.media.session.PlaybackState
+import kotlin.text.replace
+
 //import android.util.Base64
 //import android.graphics.Bitmap
 //import java.io.ByteArrayOutputStream
@@ -126,41 +128,49 @@ fun MediaMetadata?.toMediaTitle(): String {
     // updated as one of the last???
     var desc: String?  = getDescription().toString()
     if(desc.isNullOrEmpty() ||
-        desc.replace("[\\s\\p{Punct}]".toRegex(), "").isEmpty() )
+        desc.replace("[\\s\\p{Punct}]".toRegex(), "").isEmpty())
             return defaultJSON
 
     //sanity check description then give it a max len. At least one app publishes EPG data
     //which ends up in description.
     if (!desc.isNullOrEmpty()) {
-        if(desc.isNotEmpty() && desc.isNotBlank()) {
+        if (desc.isNotEmpty() && desc.isNotBlank()) {
             desc = desc.replace(", null", "")
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+
             val MAXLEN = 80
             desc.length.let {
                 if (it > MAXLEN) desc = desc.take(MAXLEN - 3) + "..."
             }
-            desc = (if(desc=="null") "" else "\"meta_description\":\"${desc}\",")
+            desc = (if (desc == "null") "" else "\"meta_description\":\"${desc}\",")
         }
     }
 
-    // remove bitmap keys:value pairs. we dont handle them (too big in the mqtt)
+    // remove bitmap keys:value pairs. we don't handle them (too big in the mqtt)
     // so delete them completely from the output. readers can uncomment the commented sections above
     // (and comment this line) to re-enable
     val newSet = keySet().filter { key -> getBitmap(key) == null}.toMutableSet()
 
-    // return keySet().toSortedSet().joinToString(prefix = "{${desc}", postfix = "}") {
     return newSet.joinToString(prefix = "{${desc}", postfix = "}") {
         key -> "\"${
                 key.lowercase()
                     .substringAfterLast('.')
     //                .substringAfterLast(delimiter ="metadata_")
-                    //.removePrefix("display_")
                     .removePrefix("metadata_key_")
             }\":\"${
-                getString(key)?: 
+                safeString(getString(key))?: 
                 decodeRating(getRating(key))?: 
-                getText(key)?: 
+                //getText(key)?: 
                 //imageToBase64(bitmap=getBitmap(key))?: // hide bitmap objects for now
-                getNullableLong(key,getLong(key))?:"" // change null to empty
+                getNullableLong(key,getLong(key))?:"" // change null to empty and handle duration
         }\""
     }
+}
+
+fun safeString(value: String?): String? {
+    if (value == null)
+        return null
+    else
+        return value.replace("\\", "\\\\").replace("\"", "\\\"")
 }
