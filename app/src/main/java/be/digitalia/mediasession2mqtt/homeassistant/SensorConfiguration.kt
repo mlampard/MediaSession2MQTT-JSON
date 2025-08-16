@@ -56,10 +56,9 @@ private fun JsonWriter.writeSensor(
 
 fun createSensorDiscoveryConfiguration(deviceId: Int, sensor: Sensor, sensorTopic: String): String {
     val writer = StringWriter()
-
-      JsonWriter(writer).use {
-          if(sensor.name == "Media Title") {
-              it.writeSensor(
+        JsonWriter(writer).use {
+            if(sensor.name == "Media Title") {
+                it.writeSensor(
                   deviceId = deviceId,
                   sensorName = sensor.name,
                   sensorUniqueId = sensor.getUniqueId(deviceId),
@@ -68,8 +67,8 @@ fun createSensorDiscoveryConfiguration(deviceId: Int, sensor: Sensor, sensorTopi
                   sensorTemplate = "{{value_json.title}}",
                   attributesTemplate = "{{value_json|to_json}}"
               )
-          }else {
-              it.writeSensor(
+            }else {
+                it.writeSensor(
                   deviceId = deviceId,
                   sensorName = sensor.name,
                   sensorUniqueId = sensor.getUniqueId(deviceId),

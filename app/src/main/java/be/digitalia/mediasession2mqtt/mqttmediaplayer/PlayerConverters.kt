@@ -25,11 +25,16 @@ fun PlaybackState?.toMQTTPlaybackStateOrNull(): MQTTPlaybackState? {
     }
 }
 
-fun getNullableLong(value: Long): String? {
+fun getNullableLong(key: String, value: Long): String? {
     return if (value == 0L) {
         null
     }else{
-        value.toString()
+        if (key.lowercase() == "android.media.metadata.duration"){
+            val minutes = value / 60000
+            val seconds = (value % 60000) / 1000
+            value.toString()+"\",\"duration_minsecs\":\"${String.format("%02d:%02d", minutes, seconds)}"
+        }else
+            value.toString()
     }
 }
 
@@ -60,31 +65,29 @@ fun decodeRating(rating: Rating?): String? {
             }
             if (   rating.ratingStyle == Rating.RATING_5_STARS
                 || rating.ratingStyle == Rating.RATING_4_STARS
-                || rating.ratingStyle == Rating.RATING_3_STARS) {
-                   return "${rating.starRating} / ${rating.ratingStyle}"
-            }
-            if (rating.ratingStyle == Rating.RATING_HEART) {
-                if(rating.hasHeart()){return "liked"} else {return "unliked"}
-            }
-            if (rating.ratingStyle == Rating.RATING_THUMB_UP_DOWN) {
-                if(rating.isThumbUp()){return "thumb-up"} else {return "thumb-down"}
-            }
-            if(rating.ratingStyle == Rating.RATING_PERCENTAGE) {
-                return "${rating.percentRating}%"
-            } else {
-                return "unknown"
-            }
-        }else {
-            return "unrated"
-        }
+                || rating.ratingStyle == Rating.RATING_3_STARS)
+                return "${rating.starRating} / ${rating.ratingStyle}"
+
+            if (rating.ratingStyle == Rating.RATING_HEART)
+                return if(rating.hasHeart()){ "liked" } else { "unliked" }
+
+            if (rating.ratingStyle == Rating.RATING_THUMB_UP_DOWN)
+                return if(rating.isThumbUp()){ "thumb-up" } else { "thumb-down" }
+
+            return if(rating.ratingStyle == Rating.RATING_PERCENTAGE) {
+                "${rating.percentRating}%" } else { "unknown" }
+        }else return "unrated"
     })
 }
 /**
  * Extract the current media title, or return an empty String if none is available.
  */
 fun MediaMetadata?.toMediaTitle(): String {
+
+    val defaultJSON = "{\"title\":\"\"}"
+
     if (this == null) {
-        return ""
+        return defaultJSON
     }
     // return a formatted json string of all available MediaMetadata strings for current mediaPlayer
     // chop known prefixes, leaving app-specific ones. Which strings are output is dependent
@@ -115,28 +118,49 @@ fun MediaMetadata?.toMediaTitle(): String {
     //   Fred finds himself stranded on a desert island with a can of beer and a banana.
     // icon_uri: https://sometv.someplace.com/program/544786.jpg
 
-    var desc: String?  = getDescription().toString()
-    desc = desc?.replace(", null","")
+    // tidy up blank metadata or stuck media_id and replace with a blank title.
+    if( (containsKey(MediaMetadata.METADATA_KEY_MEDIA_ID)  && keySet().count() == 1)
+        || keySet().count() == 0) return defaultJSON
 
-    val MAXLEN = 80
-    desc?.length?.let {
-        if (it > MAXLEN) {
-            desc = desc.take(MAXLEN - 3) + "..."
+    // return blank title until we have all/most of the data. getDescription appears to be
+    // updated as one of the last???
+    var desc: String?  = getDescription().toString()
+    if(desc.isNullOrEmpty() ||
+        desc.replace("[\\s\\p{Punct}]".toRegex(), "").isEmpty() )
+            return defaultJSON
+
+    //sanity check description then give it a max len. At least one app publishes EPG data
+    //which ends up in description.
+    if (!desc.isNullOrEmpty()) {
+        if(desc.isNotEmpty() && desc.isNotBlank()) {
+            desc = desc.replace(", null", "")
+            val MAXLEN = 80
+            desc.length.let {
+                if (it > MAXLEN) desc = desc.take(MAXLEN - 3) + "..."
+            }
+            desc = (if(desc=="null") "" else "\"meta_description\":\"${desc}\",")
         }
     }
 
-    return keySet().toSortedSet().joinToString(prefix = "{\"meta_description\":\"${desc}\",", postfix = "}") {
+    // remove bitmap keys:value pairs. we dont handle them (too big in the mqtt)
+    // so delete them completely from the output. readers can uncomment the commented sections above
+    // (and comment this line) to re-enable
+    val newSet = keySet().filter { key -> getBitmap(key) == null}.toMutableSet()
+
+    // return keySet().toSortedSet().joinToString(prefix = "{${desc}", postfix = "}") {
+    return newSet.joinToString(prefix = "{${desc}", postfix = "}") {
         key -> "\"${
                 key.lowercase()
                     .substringAfterLast('.')
-                    .removePrefix("display_")
+    //                .substringAfterLast(delimiter ="metadata_")
+                    //.removePrefix("display_")
                     .removePrefix("metadata_key_")
             }\":\"${
                 getString(key)?: 
                 decodeRating(getRating(key))?: 
-                getText(key)?:
+                getText(key)?: 
                 //imageToBase64(bitmap=getBitmap(key))?: // hide bitmap objects for now
-                getNullableLong(getLong(key))?:"" // change null to empty
+                getNullableLong(key,getLong(key))?:"" // change null to empty
         }\""
     }
 }
