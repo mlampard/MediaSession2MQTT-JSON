@@ -5,10 +5,6 @@ import android.media.Rating
 import android.media.session.PlaybackState
 import kotlin.text.replace
 
-//import android.util.Base64
-//import android.graphics.Bitmap
-//import java.io.ByteArrayOutputStream
-
 /**
  * Convert the MediaSession state to a simplified MQTT state.
  * Unsupported transient state values will return null and must not be reported.
@@ -39,23 +35,6 @@ fun getNullableLong(key: String, value: Long): String? {
             value.toString()
     }
 }
-
-/*
-fun imageToBase64(bitmap: Bitmap?): String? {
-    return (if (bitmap==null ) {
-        null
-    }else {
-        try {
-            val stream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 70, stream)
-            val byteArray = stream.toByteArray()
-            Base64.encodeToString(byteArray, Base64.DEFAULT)
-        }finally {
-            null
-        }
-    }) as String?
-}
-*/
 
 fun decodeRating(rating: Rating?): String? {
     return (if (rating == null){
@@ -129,7 +108,7 @@ fun MediaMetadata?.toMediaTitle(): String {
     var desc: String?  = getDescription().toString()
     if(desc.isNullOrEmpty() ||
         desc.replace("[\\s\\p{Punct}]".toRegex(), "").isEmpty())
-            return defaultJSON
+            return "" //defaultJSON
 
     //sanity check description then give it a max len. At least one app publishes EPG data
     //which ends up in description.
@@ -147,12 +126,18 @@ fun MediaMetadata?.toMediaTitle(): String {
         }
     }
 
-    // remove bitmap keys:value pairs. we don't handle them (too big in the mqtt)
-    // so delete them completely from the output. readers can uncomment the commented sections above
-    // (and comment this line) to re-enable
+    var title=""
+    if(getString(MediaMetadata.METADATA_KEY_TITLE).isNullOrEmpty()){
+        if(!getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE).isNullOrEmpty()) {
+            title = "\"title\":\"${getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)}\","
+        }else
+            title = desc
+    }
+
+    // remove bitmap keys
     val newSet = keySet().filter { key -> getBitmap(key) == null}.toMutableSet()
 
-    return newSet.joinToString(prefix = "{${desc}", postfix = "}") {
+    return newSet.joinToString(prefix = "{${desc}${title}", postfix = "}") {
         key -> "\"${
                 key.lowercase()
                     .substringAfterLast('.')
@@ -161,8 +146,7 @@ fun MediaMetadata?.toMediaTitle(): String {
             }\":\"${
                 safeString(getString(key))?: 
                 decodeRating(getRating(key))?: 
-                //getText(key)?: 
-                //imageToBase64(bitmap=getBitmap(key))?: // hide bitmap objects for now
+                getText(key)?: 
                 getNullableLong(key,getLong(key))?:"" // change null to empty and handle duration
         }\""
     }
