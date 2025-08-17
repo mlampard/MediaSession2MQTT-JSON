@@ -47,7 +47,7 @@ fun decodeRating(rating: Rating?): String? {
             if (   rating.ratingStyle == Rating.RATING_5_STARS
                 || rating.ratingStyle == Rating.RATING_4_STARS
                 || rating.ratingStyle == Rating.RATING_3_STARS)
-                return "${rating.starRating} / ${rating.ratingStyle}"
+                return "${rating.starRating.toBigDecimal().stripTrailingZeros().toPlainString()} / ${rating.ratingStyle}"
 
             if (rating.ratingStyle == Rating.RATING_HEART)
                 return if(rating.hasHeart()){ "liked" } else { "unliked" }
