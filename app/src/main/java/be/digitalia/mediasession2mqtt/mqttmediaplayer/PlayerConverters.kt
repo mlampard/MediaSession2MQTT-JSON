@@ -132,15 +132,14 @@ fun MediaMetadata?.toMediaTitle(): String {
 
     //sanity check description then give it a max len. At least one app publishes EPG data
     //which ends up in description.
-    if (!desc.isNullOrEmpty()) {
-        if (desc.isNotEmpty() && desc.isNotBlank()) {
+    if (desc.isNotEmpty()) {
+        if (desc.isNotBlank()) {
             desc = desc.replace(", null", "")
             desc = safeString(desc)
 
-            val MAXLEN = 80
-            if (desc != null)
-                desc.length.let {
-                if (it > MAXLEN) desc = desc.take(MAXLEN - 3) + "..."
+            val maxLen = 80
+            desc.length.let {
+                if (it > maxLen) desc = desc.take(maxLen - 3) + "..."
             }
             desc = (if (desc == "null") "" else "\"meta_description\":\"${desc}\",")
         }
@@ -174,9 +173,9 @@ fun MediaMetadata?.toMediaTitle(): String {
 }
 
 // escape sequences for safe JSON.. hopefully
-fun safeString(value: String?): String? {
+fun safeString(value: String?): String {
     if (value == null)
-        return null
+        return ""
     else
         return value
             .replace("\\", "\\\\")
