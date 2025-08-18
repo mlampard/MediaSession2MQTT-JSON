@@ -40,7 +40,8 @@ private val filteredStringKeys : List<String> = mutableListOf(MediaMetadata.META
 
 private val filteredLongKeys: List<String> = mutableListOf(MediaMetadata.METADATA_KEY_DURATION,
     MediaMetadata.METADATA_KEY_DISC_NUMBER, MediaMetadata.METADATA_KEY_TRACK_NUMBER,
-    MediaMetadata.METADATA_KEY_NUM_TRACKS, MediaMetadata.METADATA_KEY_YEAR)
+    MediaMetadata.METADATA_KEY_NUM_TRACKS, MediaMetadata.METADATA_KEY_YEAR
+    )
 
 private val filteredRatingKeys = mutableListOf(MediaMetadata.METADATA_KEY_RATING, MediaMetadata.METADATA_KEY_USER_RATING)
 
@@ -48,7 +49,7 @@ fun getNullableLong(key: String, value: Long): String? {
     return if (value == 0L) {
         null
     }else{
-        if (key.lowercase() == "android.media.metadata.duration"){
+        if (key == MediaMetadata.METADATA_KEY_DURATION){
             val minutes = value / 60000
             val seconds = (value % 60000) / 1000
             value.toString()+"\",\"duration_minsecs\":\"${String.format("%02d:%02d", minutes, seconds)}"
@@ -155,7 +156,8 @@ fun MediaMetadata?.toMediaTitle(): String {
 
     // recreate with only wanted keys
     val newSet = keySet().filter { key -> (!filteredBitmapKeys.contains(key))
-            && (filteredStringKeys.contains(key) || filteredLongKeys.contains(key)||filteredRatingKeys.contains(key))
+            && (filteredStringKeys.contains(key) ||
+            filteredLongKeys.contains(key) || filteredRatingKeys.contains(key))
     }.toMutableSet()
 
     return newSet.joinToString(prefix = "{${desc}${title}", postfix = "}") {
@@ -166,7 +168,7 @@ fun MediaMetadata?.toMediaTitle(): String {
             }\":\"${
                 if (filteredStringKeys.contains(key)) safeString(getString(key)) else   
                 if (filteredRatingKeys.contains(key)) decodeRating(getRating(key)) else   
-                if( filteredRatingKeys.contains(key)) getNullableLong(key,getLong(key)) else ""
+                if( filteredLongKeys.contains(key)) getNullableLong(key,getLong(key)) else ""
         }\""
     }
 }
