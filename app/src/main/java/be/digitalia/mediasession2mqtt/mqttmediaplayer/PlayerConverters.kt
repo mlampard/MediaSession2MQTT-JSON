@@ -23,6 +23,27 @@ fun PlaybackState?.toMQTTPlaybackStateOrNull(): MQTTPlaybackState? {
     }
 }
 
+private val filteredBitmapKeys: List<String> = mutableListOf(
+        MediaMetadata.METADATA_KEY_DISPLAY_ICON,
+        MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_ALBUM_ART
+    )
+
+private val filteredStringKeys : List<String> = mutableListOf(MediaMetadata.METADATA_KEY_MEDIA_ID,
+    MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_TITLE,
+    MediaMetadata.METADATA_KEY_ALBUM, MediaMetadata.METADATA_KEY_ALBUM_ARTIST,
+    MediaMetadata.METADATA_KEY_ALBUM_ART_URI, MediaMetadata.METADATA_KEY_ART_URI,
+    MediaMetadata.METADATA_KEY_AUTHOR,MediaMetadata.METADATA_KEY_COMPILATION,
+    MediaMetadata.METADATA_KEY_DATE, MediaMetadata.METADATA_KEY_DISPLAY_DESCRIPTION,
+    MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI, MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE,
+    MediaMetadata.METADATA_KEY_DISPLAY_TITLE, MediaMetadata.METADATA_KEY_GENRE,
+    MediaMetadata.METADATA_KEY_WRITER)
+
+private val filteredLongKeys: List<String> = mutableListOf(MediaMetadata.METADATA_KEY_DURATION,
+    MediaMetadata.METADATA_KEY_DISC_NUMBER, MediaMetadata.METADATA_KEY_TRACK_NUMBER,
+    MediaMetadata.METADATA_KEY_NUM_TRACKS, MediaMetadata.METADATA_KEY_YEAR)
+
+private val filteredRatingKeys = mutableListOf(MediaMetadata.METADATA_KEY_RATING, MediaMetadata.METADATA_KEY_USER_RATING)
+
 fun getNullableLong(key: String, value: Long): String? {
     return if (value == 0L) {
         null
@@ -64,9 +85,7 @@ fun decodeRating(rating: Rating?): String? {
  * Extract the current media title, or return an empty String if none is available.
  */
 fun MediaMetadata?.toMediaTitle(): String {
-
     val defaultJSON = "{\"title\":\"\"}"
-
     if (this == null) {
         return defaultJSON
     }
@@ -134,20 +153,20 @@ fun MediaMetadata?.toMediaTitle(): String {
             title = desc
     }
 
-    // remove bitmap keys
-    val newSet = keySet().filter { key -> getBitmap(key) == null}.toMutableSet()
+    // recreate with only wanted keys
+    val newSet = keySet().filter { key -> (!filteredBitmapKeys.contains(key))
+            && (filteredStringKeys.contains(key) || filteredLongKeys.contains(key)||filteredRatingKeys.contains(key))
+    }.toMutableSet()
 
     return newSet.joinToString(prefix = "{${desc}${title}", postfix = "}") {
         key -> "\"${
                 key.lowercase()
                     .substringAfterLast('.')
-    //                .substringAfterLast(delimiter ="metadata_")
                     .removePrefix("metadata_key_")
             }\":\"${
-                safeString(getString(key))?: 
-                decodeRating(getRating(key))?: 
-                getText(key)?: 
-                getNullableLong(key,getLong(key))?:"" // change null to empty and handle duration
+                if (filteredStringKeys.contains(key)) safeString(getString(key)) else   
+                if (filteredRatingKeys.contains(key)) decodeRating(getRating(key)) else   
+                if( filteredRatingKeys.contains(key)) getNullableLong(key,getLong(key)) else ""
         }\""
     }
 }
